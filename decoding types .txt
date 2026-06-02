@@ -1,0 +1,22 @@
+Basic Decoding Strategies
+    These are the foundational methods:
+
+        Greedy Search: The simplest method, selecting the token with the highest probability at each step. It's fast but prone to repetition and can miss better overall sequences.
+
+        Beam Search: Keeps track of a set number (the "beam width") of the most likely sequences at each step, evaluating their overall probability. It finds higher-quality sequences but is computationally more intensive.
+
+        Sampling: Instead of picking the most likely token, this method randomly selects a token based on the probability distribution. This introduces more variety and creativity but can sometimes lead to incoherent results. Top-k and Top-p (nucleus) sampling are refinements that limit the random selection to the most probable tokens, offering a balance between creativity and coherence.
+
+Advanced & Custom Decoding Methods
+
+    These are more recent or specialized strategies designed to address specific challenges like speed or hallucinations:
+
+        Contrastive Decoding: Methods like DeCoRe (Decoding by Contrasting Retrieval Heads) work by comparing the outputs of the original model against a version where certain "retrieval heads" are masked. This can help reduce hallucinations and improve factuality.
+
+        Speculative Decoding: An acceleration technique used to speed up the decoding process. A smaller, faster "draft" model generates several tokens, which are then verified in parallel by the larger target model. If the draft is accepted, multiple tokens are generated in a single step, significantly improving latency.
+
+        Multinomial Sampling: This is essentially standard sampling where the token is selected by sampling from the probability distribution over the entire vocabulary.
+
+        Constrained Decoding: This approach enforces specific constraints on the generated output, ensuring it adheres to a particular format, contains certain phrases, or avoids banned terms. It's crucial for applications needing structured outputs, like JSON or code.
+
+        Multimodal Decoding: For models that can handle multiple data types (text, images, audio), this process involves generating outputs in one modality based on inputs in another (e.g., generating a text description from an image).
