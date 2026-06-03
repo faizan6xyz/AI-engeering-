@@ -1,0 +1,289 @@
+Types of RAG (Retrieval-Augmented Generation)
+
+1. Naive / Basic RAG
+    How it works:
+        Splits documents into fixed-size chunks → embeds them using a vector model → stores in a vector database. At query time, embeds the query, retrieves top-k nearest chunks, and passes them to the LLM as context.
+        Advantages:
+
+    Very simple to implement
+        Fast to prototype
+        Low infrastructure cost
+        Works well for simple Q&A tasks
+
+    Disadvantages:
+        Misses context at chunk boundaries
+        No query understanding or rewriting
+        Poor performance on complex multi-part questions
+        Retrieval quality fully depends on chunk size choice
+
+    Use Case:
+        Internal FAQ bots, simple document Q&A, customer support over a small knowledge base.
+    
+    What makes it different:
+        The baseline — every other RAG type improves on this. No pre/post processing, no intelligence in retrieval.
+
+2. Advanced RAG
+    How it works:
+        Adds a pre-retrieval layer (query rewriting, HyDE — generating a hypothetical answer to improve embedding), then retrieves, then applies a post-retrieval layer (re-ranking with a cross-encoder, context compression to remove noise).
+    
+    Advantages:
+        Significantly better retrieval precision
+        Handles ambiguous queries well
+        Re-ranking removes irrelevant chunks
+        Modular — each stage can be swapped independently
+
+    Disadvantages:
+        Higher latency than Naive RAG
+        More components to maintain
+        Re-ranker adds cost
+        Tuning each stage is non-trivial
+
+    Use Case:
+        Enterprise knowledge bases, legal/medical document search, anything where retrieval quality matters more than speed.
+    
+    What makes it different:
+        Naive RAG with intelligence added before and after retrieval. Doesn't change the core architecture — just adds processing layers around it.
+
+3. Modular RAG
+    How it works:
+        Decomposes the pipeline into independent modules (query processor, retriever, reranker, reader, memory). Each module has a defined interface and can be replaced, combined, or skipped. Think of it as a configurable DAG (Directed Acyclic Graph) of RAG components.
+    
+    Advantages:
+
+        Maximum flexibility
+        Easy A/B testing of individual components
+        Can skip unnecessary steps for efficiency
+        Can mix dense + sparse + graph retrieval
+
+    Disadvantages:
+        Complex to design and maintain
+        Harder to debug end-to-end
+        Requires clear module contracts/interfaces
+        Overkill for simple use cases
+
+    Use Case:
+        Research platforms, large-scale production RAG systems, multi-tenant applications requiring per-tenant pipeline customization.
+    
+    What makes it different:
+        Not a specific technique — it's an architectural pattern. Naive and Advanced RAG are rigid pipelines; Modular RAG is a flexible lego set of components.
+
+4. Graph RAG
+    How it works:
+        Extracts entities and relationships from documents → builds a knowledge graph (nodes = entities, edges = relationships). At query time, performs graph traversal or subgraph extraction alongside or instead of vector search. The LLM then reasons over the retrieved subgraph.
+    
+    Advantages:
+        Excellent at multi-hop reasoning
+        Captures relationships that vector search misses
+        Structured and explainable retrieval
+        Handles "who knows whom" type queries naturally
+
+    Disadvantages:
+        Graph construction is expensive and time-consuming
+        Entity extraction errors propagate through the graph
+        Doesn't work well for purely unstructured prose
+        Requires graph database infrastructure
+
+    Use Case:
+        Knowledge management, drug interaction discovery, fraud detection, org chart reasoning, any domain with rich entity relationships.
+    
+    What makes it different:
+        Retrieves graph substructures instead of text chunks. Unique ability: multi-hop reasoning — finding information that requires chaining 2+ relationships together.
+
+5. Agentic RAG
+    How it works:
+        An LLM agent dynamically decides whether to retrieve, what to search for, and how many times. Uses tools (search, calculator, code executor). Iterates: retrieve → think → retrieve again if needed → synthesize. Often uses ReAct or Plan-and-Execute patterns.
+    
+    Advantages:
+        Handles complex multi-step queries
+        Self-correcting retrieval
+        Can use multiple data sources in one query
+        Adapts its strategy per query type
+
+    Disadvantages:
+        Unpredictable and potentially high latency
+        Risk of infinite retrieval loops
+        Hard to debug agent decisions
+        Higher cost per query
+
+    Use Case:
+        Research assistants, complex analytical queries (e.g., "compare Q3 revenue across all regions and flag anomalies"), any task requiring planning and multi-step reasoning.
+    
+    What makes it different:
+        RAG where retrieval is a tool the LLM calls, not a fixed pre-step. The number and content of retrievals is dynamic, not predetermined.
+
+6. Self-RAG
+    How it works:
+        The LLM is fine-tuned with special reflection tokens: [Retrieve] (should I fetch?), [Relevant] (is this chunk useful?), [Supported] (is my answer grounded?), [Utility] (is this useful to the user?). The model self-critiques and decides whether to re-retrieve or revise its answer.
+    
+    Advantages:
+        Reduces hallucination through self-critique
+        Only retrieves when needed, improving efficiency
+        Built-in answer grounding check
+        More accurate than standard RAG on benchmarks
+
+    Disadvantages:
+        Requires a specially fine-tuned model — not plug-and-play
+        Harder to adapt to new domains
+        Training data for reflection tokens is scarce
+        Adds inference complexity
+
+    Use Case:
+        High-stakes Q&A where hallucination is costly (medical, legal, compliance), scenarios where not every query needs retrieval.
+    
+    What makes it different:
+        The only RAG type where the retrieval decision is inside the model itself. All others decide retrieval externally; Self-RAG has it baked into the model weights.
+
+7. Corrective RAG (CRAG)
+    How it works:
+        Retrieves normally → evaluates retrieved documents with a lightweight relevance evaluator → if documents score below a threshold, triggers a web search or alternate retrieval source → reformulates query if needed → then generates the final answer.
+    
+    Advantages:
+
+        Fallback to web search prevents stale or missing answers
+        Relevance evaluation catches bad retrievals
+        Low overhead when retrieval is already good
+        Significantly improves robustness
+
+    Disadvantages:
+        Evaluator quality determines correction quality
+        Web search fallback adds latency and cost
+        Threshold tuning is tricky
+        May over-correct on borderline cases
+
+    Use Case:
+        Time-sensitive domains (news, finance), any RAG system where the knowledge base may be incomplete or outdated.
+        
+    What makes it different:
+        The only RAG type with an explicit fallback mechanism — it actively fixes bad retrievals rather than proceeding with poor-quality context.
+
+8. Sentence-Window RAG
+    How it works:
+        Documents are indexed at the sentence level for precise retrieval. When a matching sentence is found, it is expanded to a ±N sentence window before passing to the LLM. Retrieval is fine-grained; context sent to the LLM is broader.
+    
+    Advantages:
+        High retrieval precision
+        LLM gets sufficient surrounding context around the matching sentence
+        Works well with dense, information-heavy documents
+        Simple to implement on top of any vector database
+
+    Disadvantages:
+        Window size must be tuned per domain
+        Overlapping windows can duplicate context
+        Doesn't help when relevant information spans multiple pages
+        More index entries compared to standard chunk-based indexing
+
+    Use Case:
+        Technical documentation, legal contracts, research papers — anywhere sentences are dense and context around a retrieved hit matters.
+    
+    What makes it different:
+        Decouples retrieval granularity (sentence level) from context granularity (window level). Naive RAG uses the same chunk for both retrieval and context.
+
+9. Parent-Document RAG
+    How it works:
+        Index small child chunks (e.g. 128 tokens) for precise retrieval, but map each child back to its parent document or large chunk (e.g. 512–1024 tokens). Return the parent to the LLM, not the child. Two-layer index: child chunks for matching, parent chunks for context.
+        
+    Advantages:
+        Best of both worlds: precise retrieval and full context
+        Reduces context fragmentation
+        Parent chunks provide richer context to the LLM
+        Works well for long-form documents
+        
+    Disadvantages:
+        Larger chunks sent to LLM means more tokens consumed
+        Parent-child mapping adds index complexity
+        Parents may include irrelevant surrounding text
+        Less efficient than sentence-window for short documents
+
+    Use Case:
+        Books, long reports, legal documents, any content where a small passage is the answer but surrounding context is essential for understanding.
+    
+    What makes it different:
+        Two-level index — retrieves small, returns big. Sentence-Window uses a sliding window; Parent-Document uses a predefined document hierarchy.
+
+10. Hierarchical RAG
+    How it works:
+        Builds a tree of summaries: leaf nodes = raw chunks, parent nodes = summaries of their children, root = full document summary. Retrieval is top-down: first find relevant summaries, then drill into the relevant chunks underneath. Two-stage retrieval narrows the search space progressively.
+    
+    Advantages:
+        Scales well to very large document corpora
+        Summaries give global context before drilling into details
+        Reduces irrelevant chunk retrieval
+        Natural fit for hierarchically structured documents
+
+    Disadvantages:
+        Summary generation adds significant upfront cost
+        Summary quality directly affects downstream retrieval
+        Deep hierarchies increase retrieval latency
+        Harder to keep summaries fresh when documents are updated
+
+    Use Case:
+        Large document repositories, multi-document QA, corpora too large to exhaustively search at the chunk level.
+    
+    What makes it different:
+        Coarse-to-fine retrieval across multiple levels. Other RAG types retrieve at a single granularity; Hierarchical RAG retrieves at multiple levels sequentially.
+
+11. Multimodal RAG
+    How it works:
+        Indexes text, images, tables, audio, and video using modality-specific encoders. A multimodal embedding model (e.g. CLIP for images and text) maps different modalities into a shared vector space. Retrieves across modalities and passes content to a multimodal LLM for generation.
+    
+    Advantages:
+        Handles rich media content natively
+        Can answer questions about images, charts, and diagrams
+        Unified search across all content types
+        Future-proof as content becomes increasingly multimodal
+
+    Disadvantages:
+        Multimodal embeddings are less mature than text embeddings
+        High storage and compute cost
+        Evaluation is harder than text-only RAG
+        Multimodal LLMs are significantly more expensive
+
+    Use Case:
+        Product catalogs (images + specs), medical imaging combined with reports, slide deck Q&A, manufacturing manuals containing diagrams.
+    
+    What makes it different:
+        The only RAG type that retrieves non-text content. All other RAG types are text-centric even if the source documents contain images or tables.
+
+12. Structured RAG (SQL / KG RAG)
+    How it works:
+        Instead of embedding text chunks, translates natural language queries into structured queries (SQL, SPARQL, Cypher). Executes against a relational database or knowledge graph. Returns structured results. The LLM then synthesizes a natural language answer from the query results.
+    
+    Advantages:
+        Precise, deterministic retrieval
+        No hallucination from the retrieval step itself
+        Handles numerical and aggregation queries very well
+        Leverages existing database infrastructure
+
+    Disadvantages:
+        Query translation can fail (NL → SQL errors are common)
+        Requires well-structured, clean, and complete data
+        Limited to data that exists within the schema
+        Schema changes require prompt and pipeline updates
+
+    Use Case:
+        Business intelligence, CRM Q&A ("how many deals closed last quarter?"), analytics over structured enterprise data.
+    
+    What makes it different:
+        Retrieves structured records, not text chunks. The "retrieval" step is a database query, not a vector similarity search.
+
+13. Hybrid RAG
+    How it works:
+        Runs both dense (vector/semantic) search and sparse (BM25/TF-IDF/keyword) search in parallel. Combines results using a fusion strategy such as RRF (Reciprocal Rank Fusion) or score normalization. Passes the merged top-k results to the LLM.
+    
+    Advantages:
+        Covers both semantic and exact keyword queries
+        Robust across diverse query types
+        RRF fusion is parameter-free and very effective
+        Small overhead for large retrieval quality gains
+
+    Disadvantages:
+        Two separate indexes to build and maintain
+        Result fusion adds pipeline complexity
+        Sparse search still struggles with synonyms and paraphrases
+        Needs tuning for optimal fusion weights in some cases
+
+    Use Case:
+        General-purpose search systems, e-commerce, any domain where users mix exact-term queries and conceptual/semantic queries.
+    
+    What makes it different:
+        The only RAG type that explicitly combines two retrieval paradigms in parallel. All other types use a single retrieval approach; Hybrid RAG merges both dense and sparse signals.
