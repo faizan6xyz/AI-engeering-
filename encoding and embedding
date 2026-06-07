@@ -1,0 +1,228 @@
+"""
+====================================================================
+ ENCODING vs. EMBEDDING: A Complete Python Guide
+====================================================================
+ ENCODING: Converts categorical/tabular data into numbers.
+           Usually sparse, does NOT capture semantic meaning.
+ EMBEDDING: Converts unstructured data (text) into dense vectors.
+            Captures semantic meaning, context, and relationships.
+====================================================================
+ REQUIREMENTS:
+ pip install pandas scikit-learn sentence-transformers
+====================================================================
+"""
+
+import pandas as pd
+import numpy as np
+import warnings
+
+# Suppress sklearn warnings for cleaner output
+warnings.filterwarnings('ignore')
+
+# Try to import sentence-transformers (optional but recommended)
+try:
+    from sentence_transformers import SentenceTransformer
+    from sklearn.metrics.pairwise import cosine_similarity
+    HAS_TRANSFORMERS = True
+except ImportError:
+    HAS_TRANSFORMERS = False
+    print("Note: 'sentence-transformers' not installed. Skipping Transformer Embeddings.")
+    print("Install it via: pip install sentence-transformers\n")
+
+
+def print_header(title):
+    print(f"\n{'='*60}")
+    print(f"  {title}")
+    print(f"{'='*60}")
+
+def print_info(use_case, advantage, disadvantage):
+    print(f"  [Use Case]     : {use_case}")
+    print(f"  [Advantage]    : {advantage}")
+    print(f"  [Disadvantage] : {disadvantage}")
+
+
+# =====================================================================
+# PART 1: ENCODING TECHNIQUES (For Categorical/Tabular Data)
+# =====================================================================
+
+def demo_label_encoding():
+    print_header("1. LABEL ENCODING")
+    print_info(
+        "Target variables or tree-based models (Random Forest, XGBoost).",
+        "Simple, memory-efficient, preserves the original column.",
+        "Implies a false mathematical order (Bird > Dog > Cat) which confuses linear models."
+    )
+    
+    from sklearn.preprocessing import LabelEncoder
+    
+    data = pd.DataFrame({'animal': ['cat', 'dog', 'bird', 'dog', 'cat']})
+    le = LabelEncoder()
+    # Note: LabelEncoder works directly on 1D arrays/Series
+    data['animal_encoded'] = le.fit_transform(data['animal'])
+    
+    print("\n  Code Output:")
+    print(data.to_string(index=False))
+
+def demo_one_hot_encoding():
+    print_header("2. ONE-HOT ENCODING (OHE)")
+    print_info(
+        "Nominal data (no inherent order) for linear models, neural nets, KNN.",
+        "Prevents the model from assuming a false ordinal relationship.",
+        "Curse of Dimensionality: Creates massive sparse datasets if categories > 100."
+    )
+    
+    from sklearn.preprocessing import OneHotEncoder
+    
+    data = pd.DataFrame({'color': ['red', 'blue', 'green', 'red']})
+    # sparse_output=False returns a standard numpy array instead of a sparse matrix
+    ohe = OneHotEncoder(sparse_output=False) 
+    encoded_array = ohe.fit_transform(data[['color']])
+    
+    ohe_df = pd.DataFrame(encoded_array, columns=ohe.get_feature_names_out(['color']))
+    
+    print("\n  Code Output:")
+    print(ohe_df.to_string(index=False))
+
+def demo_ordinal_encoding():
+    print_header("3. ORDINAL ENCODING")
+    print_info(
+        "Ordinal data where order matters (e.g., 'Low', 'Medium', 'High' or S, M, L).",
+        "Preserves the meaningful rank/order of the data for the model.",
+        "Assumes equal distance between steps (Low->Med is treated same as Med->High)."
+    )
+    
+    from sklearn.preprocessing import OrdinalEncoder
+    
+    data = pd.DataFrame({'size': ['S', 'M', 'L', 'XL', 'M']})
+    # Explicitly define the mathematical order
+    ordinal_encoder = OrdinalEncoder(categories=[['S', 'M', 'L', 'XL']])
+    data['size_encoded'] = ordinal_encoder.fit_transform(data[['size']])
+    
+    print("\n  Code Output:")
+    print(data.to_string(index=False))
+
+def demo_target_encoding():
+    print_header("4. TARGET / MEAN ENCODING")
+    print_info(
+        "High-cardinality features (e.g., Zip Codes, City names) in supervised learning.",
+        "Highly informative; keeps dimensionality at exactly 1 column.",
+        "High risk of data leakage and overfitting if not smoothed (e.g., using K-Fold)."
+    )
+    
+    data = pd.DataFrame({
+        'city': ['NY', 'LA', 'NY', 'LA', 'Chicago', 'NY'],
+        'target': [1, 0, 1, 0, 0, 1] # 1 = bought product, 0 = didn't
+    })
+    
+    # Calculate mean target per city
+    mean_encoded = data.groupby('city')['target'].mean().to_dict()
+    data['city_encoded'] = data['city'].map(mean_encoded)
+    
+    print("\n  Code Output:")
+    print(data.to_string(index=False))
+
+
+# =====================================================================
+# PART 2: EMBEDDING TECHNIQUES (For Unstructured Text Data)
+# =====================================================================
+
+def demo_tfidf():
+    print_header("5. TF-IDF (Term Frequency-Inverse Document Frequency)")
+    print_info(
+        "Baseline text classification, keyword extraction, simple search engines.",
+        "Computationally cheap, easy to interpret, requires no pre-training.",
+        "'Bag-of-words' approach: ignores word order and semantic meaning."
+    )
+    
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    
+    corpus = [
+        "I love machine learning and deep learning.",
+        "Deep learning is a subset of machine learning.",
+        "I love eating pizza and pasta."
+    ]
+    
+    vectorizer = TfidfVectorizer(stop_words='english')
+    tfidf_matrix = vectorizer.fit_transform(corpus)
+    
+    print("\n  Code Output:")
+    print(f"  Vocabulary found: {list(vectorizer.get_feature_names_out())}")
+    print(f"  Matrix Shape: {tfidf_matrix.shape} (3 documents, 8 unique words)")
+    print("  (Notice 'learning' has high scores in docs 1 & 2, but 0 in doc 3)")
+
+def demo_transformer_embeddings():
+    print_header("6. TRANSFORMER EMBEDDINGS (Sentence-BERT)")
+    print_info(
+        "Modern Semantic Search, RAG (Retrieval-Augmented Generation), Clustering.",
+        "Context-aware ('bank' changes meaning based on sentence). Highly accurate.",
+        "Computationally heavier; requires downloading a model (~80MB) and more RAM."
+    )
+    
+    if not HAS_TRANSFORMERS:
+        print("  [SKIPPED] Install 'sentence-transformers' to run this demo.")
+        return
+
+    print("  Downloading/Loading model 'all-MiniLM-L6-v2' (this may take a moment)...")
+    model = SentenceTransformer('all-MiniLM-L6-v2')
+    
+    sentences = [
+        "The cat sat on the mat.",           # Sentence 0
+        "A feline is resting on a rug.",     # Sentence 1 (Similar meaning to 0)
+        "I enjoy writing Python code."       # Sentence 2 (Completely different)
+    ]
+    
+    # Generate embeddings (converts text to dense 384-dimensional vectors)
+    embeddings = model.encode(sentences)
+    
+    # Calculate Cosine Similarity (1.0 = identical, 0.0 = unrelated)
+    sim_0_1 = cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
+    sim_0_2 = cosine_similarity([embeddings[0]], [embeddings[2]])[0][0]
+    
+    print("\n  Code Output:")
+    print(f"  Embedding Shape: {embeddings.shape} -> (3 sentences, 384 dimensions each)")
+    print(f"  Similarity (Cat/Mat vs Feline/Rug)  : {sim_0_1:.4f} (High semantic match)")
+    print(f"  Similarity (Cat/Mat vs Python Code) : {sim_0_2:.4f} (Low semantic match)")
+
+
+# =====================================================================
+# SUMMARY CHEAT SHEET
+# =====================================================================
+
+def print_summary():
+    print(f"\n{'='*60}")
+    print(f"  QUICK DECISION GUIDE (CHEAT SHEET)")
+    print(f"{'='*60}")
+    summary = """
+  | Scenario                           | Recommended Technique |
+  |------------------------------------|-----------------------|
+  | Target is "Yes"/"No"               | Label Encoding        |
+  | Feature is "Color" (Red, Blue)     | One-Hot Encoding      |
+  | Feature is "Size" (S, M, L)        | Ordinal Encoding      |
+  | Feature is "City" (100+ options)   | Target Encoding       |
+  | Simple Keyword Search / Baseline   | TF-IDF                |
+  | RAG / Semantic Search / Clustering | Sentence Transformers |
+"""
+    print(summary)
+
+
+# =====================================================================
+# MAIN EXECUTION
+# =====================================================================
+
+if __name__ == "__main__":
+    print("\nStarting Encoding & Embedding Demonstrations...\n")
+    
+    # Run Encoding Demos
+    demo_label_encoding()
+    demo_one_hot_encoding()
+    demo_ordinal_encoding()
+    demo_target_encoding()
+    
+    # Run Embedding Demos
+    demo_tfidf()
+    demo_transformer_embeddings()
+    
+    # Print Summary
+    print_summary()
+    
+    print("Script execution complete.\n")

@@ -16,7 +16,6 @@ import numpy as np
 import re
 from typing import List, Tuple
 
-
 # ─────────────────────────────────────────────
 # 1. DOCUMENTS  — your knowledge base
 # ─────────────────────────────────────────────
