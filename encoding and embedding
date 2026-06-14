@@ -183,7 +183,6 @@ def demo_transformer_embeddings():
     print(f"  Similarity (Cat/Mat vs Feline/Rug)  : {sim_0_1:.4f} (High semantic match)")
     print(f"  Similarity (Cat/Mat vs Python Code) : {sim_0_2:.4f} (Low semantic match)")
 
-
 # =====================================================================
 # SUMMARY CHEAT SHEET
 # =====================================================================
