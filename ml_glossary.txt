@@ -916,7 +916,9 @@ Common activations:
 MOMENTUM (Optimizer)
 ────────────────────────────────────────────────────────────────────────────────
 Definition    : Accumulates an exponentially decaying moving average of past
-               gradients to dampen oscillations and speed up convergence.
+               gradients to dampen oscillations and speed up convergence (its
+               an algorithm or mathematical function used in machine learning to
+               adjust a model's parameters  to minimize errors)
 Uses          : SGD with momentum, Adam optimizer.
 Advantages    : Faster convergence; escapes shallow local minima.
 Disadvantages : Adds a hyperparameter; can overshoot minimum.
