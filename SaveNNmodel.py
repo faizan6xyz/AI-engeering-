@@ -4,14 +4,11 @@ EarlyStopping = tf.keras.callbacks.EarlyStopping
 Dense = tf.keras.layers.Dense
 Sequential = tf.keras.Sequential
 load_model = tf.keras.models.load_model
-
-
 model = Sequential([
     Dense(64, activation='relu', input_shape=(10,)),
     Dense(32, activation='relu'),
     Dense(1, activation='sigmoid')
 ])
-
 model.compile(
     optimizer='adam',
     loss='binary_crossentropy',
@@ -20,7 +17,6 @@ model.compile(
 x= [[1]]
 y= [1]
 model.fit(x, y, epochs=10)
-
 # Save model
 model.save("nn_model.keras") 
 '''
