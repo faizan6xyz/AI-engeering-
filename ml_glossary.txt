@@ -816,6 +816,20 @@ Advantages    : Can significantly boost performance; systematic.
 Disadvantages : Computationally expensive; risk of overfitting to validation set
                (need test set reserved).
 ────────────────────────────────────────────────────────────────────────────────
+HYPERBAND
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Combines random search with successive halving/early-stopping
+                across multiple "brackets" of different aggressiveness, to
+                adaptively allocate more resources to promising configs.
+Uses          : Keras Tuner, Ray Tune; deep learning hyperparameter search
+                where training curves reveal early which runs are promising.
+Advantages    : More principled than plain successive halving — hedges
+                against being too aggressive by running multiple bracket
+                configurations; strong empirical results for neural net tuning.
+Disadvantages : More complex to configure (brackets, halving rate); still
+                assumes early performance is somewhat predictive of final
+                performance, which isn't always true.
+────────────────────────────────────────────────────────────────────────────────
 GRID SEARCH
 ────────────────────────────────────────────────────────────────────────────────
 Definition    : Exhaustively evaluates every combination of hyperparameter
