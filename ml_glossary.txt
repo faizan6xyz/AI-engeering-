@@ -815,7 +815,40 @@ Uses          : Optimizing any ML model.
 Advantages    : Can significantly boost performance; systematic.
 Disadvantages : Computationally expensive; risk of overfitting to validation set
                (need test set reserved).
-
+────────────────────────────────────────────────────────────────────────────────
+GRID SEARCH
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Exhaustively evaluates every combination of hyperparameter
+                values from a predefined discrete grid, selecting the
+                combination with best validation performance.
+Uses          : Small hyperparameter spaces (e.g. 2-3 params, few values each)
+                — sklearn's GridSearchCV over C/gamma for SVM, max_depth/
+                n_estimators for trees.
+Advantages    : Simple, deterministic, guaranteed to find the best combo
+                within the specified grid; easy to parallelize (each combo
+                is independent).
+Disadvantages : Combinations grow exponentially with number of params
+                (curse of dimensionality) — e.g. 5 params × 10 values each =
+                100,000 fits; wastes compute evaluating unpromising regions;
+                grid resolution limits precision (best value might fall
+                between grid points).
+────────────────────────────────────────────────────────────────────────────────
+RANDOM SEARCH
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Samples a fixed number of hyperparameter combinations 
+                randomly from specified distributions (uniform, log-uniform,
+                etc.) instead of testing every combination.
+Uses          : Same use cases as grid search but with larger/higher-dimensional
+                spaces; sklearn's RandomizedSearchCV.
+Advantages    : Far more efficient than grid search in high dimensions —
+                empirically shown (Bergstra & Bengio, 2012) to find
+                near-optimal params faster because not all hyperparameters
+                matter equally, and random sampling explores more distinct
+                values per important parameter; easy to parallelize; budget
+                (n_iter) set independently of dimensionality.
+Disadvantages : No guarantee of finding the true optimum; results have some
+                run-to-run variance; still "blind" — doesn't use past
+                results to guide future samples (unlike Bayesian optimization).
 ────────────────────────────────────────────────────────────────────────────────
 BAYESIAN OPTIMIZATION
 ────────────────────────────────────────────────────────────────────────────────
@@ -1064,7 +1097,267 @@ Advantages    : Enables error diagnosis; required in high-stakes domains.
 Disadvantages : Most interpretable models (linear, trees) are less powerful;
                complex models require post-hoc methods (SHAP, LIME).
 
-
-================================================================================
-END OF GLOSSARY — 80+ TERMS COVERED
-================================================================================
+════════════════════════════════════════════════════════════════════════════════
+SECTION 7 — NLP / LLM / RAG SPECIFIC (extension)
+════════════════════════════════════════════════════════════════════════════════
+────────────────────────────────────────────────────────────────────────────────
+TOKENIZATION
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Splitting raw text into smaller units (tokens) — words,
+subwords, or characters — that a model can process as numeric IDs.
+Uses          : First preprocessing step for every LLM (BPE, WordPiece,
+SentencePiece, Unigram).
+Advantages    : Subword tokenization handles rare/unseen words gracefully;
+keeps vocabulary size manageable.
+Disadvantages : Poor tokenization hurts non-English/code text; token count
+affects cost and context window usage; splits can break
+semantic units (e.g. numbers, code identifiers).
+────────────────────────────────────────────────────────────────────────────────
+POSITIONAL ENCODING
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Injects sequence-order information into Transformer inputs
+since self-attention itself is permutation-invariant.
+Uses          : Sinusoidal (original Transformer), learned, RoPE (Rotary,
+used in Llama/Qwen), ALiBi.
+Advantages    : RoPE generalizes better to longer sequences than absolute
+learned embeddings; relatively cheap to compute.
+Disadvantages : Extrapolation beyond trained context length still degrades
+without extra tricks (NTK scaling, YaRN).
+────────────────────────────────────────────────────────────────────────────────
+CONTEXT WINDOW
+────────────────────────────────────────────────────────────────────────────────
+Definition    : The maximum number of tokens (input + output) a model can
+attend to in a single forward pass.
+Uses          : Bounds how much conversation history, retrieved context, or
+document text can be fed to an LLM at once.
+Advantages    : Larger windows enable long-document QA, agent memory, big RAG
+context stuffing.
+Disadvantages : Quadratic attention cost; "lost in the middle" — models often
+attend poorly to content buried in the middle of long contexts.
+────────────────────────────────────────────────────────────────────────────────
+RETRIEVAL-AUGMENTED GENERATION (RAG)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Augments an LLM's generation by retrieving relevant external
+documents/chunks at inference time and injecting them into
+the prompt, instead of relying solely on parametric memory.
+Uses          : Document QA, chatbots grounded in private data, hybrid
+dense+sparse retrieval pipelines (your FAISS+BM25+RRF setup).
+Advantages    : Reduces hallucination; keeps knowledge up to date without
+retraining; cheaper than fine-tuning for factual grounding.
+Disadvantages : Retrieval quality bottlenecks output quality; chunking and
+threshold tuning are fiddly (e.g. RRF score scale mismatches);
+adds latency; irrelevant retrieved chunks can mislead the model.
+────────────────────────────────────────────────────────────────────────────────
+CHUNKING
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Splitting long documents into smaller segments before
+embedding/indexing so retrieval returns focused, relevant text.
+Uses          : Fixed-size, sentence-based, recursive, and semantic
+(percentile-based boundary detection) chunking strategies.
+Advantages    : Improves retrieval precision; keeps embeddings within model
+input limits.
+Disadvantages : Wrong chunk size fragments context (too small) or dilutes
+relevance (too large); boundary choice is heuristic and
+domain-dependent.
+────────────────────────────────────────────────────────────────────────────────
+RECIPROCAL RANK FUSION (RRF)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Combines rankings from multiple retrievers (e.g. dense vector
+search + BM25) by scoring each document as Σ 1/(k + rank_i)
+across retriever result lists.
+Uses          : Hybrid search systems merging sparse and dense retrieval.
+Advantages    : Doesn't require score normalization across retrievers of
+different scales; simple, robust, no training needed.
+Disadvantages : Fused scores live on a very different (much smaller) scale
+than raw cosine similarity — thresholds tuned for one won't
+work for the other unless explicitly renormalized.
+────────────────────────────────────────────────────────────────────────────────
+VECTOR DATABASE / VECTOR INDEX
+────────────────────────────────────────────────────────────────────────────────
+Definition    : A data store optimized for similarity search over
+high-dimensional embedding vectors (exact or approximate NN).
+Uses          : FAISS, Chroma, Qdrant, Pinecone, Milvus for RAG retrieval.
+Advantages    : Sub-linear approximate search (HNSW, IVF) scales to millions
+of vectors; integrates with embedding pipelines easily.
+Disadvantages : ANN indexes trade recall for speed; re-indexing cost on
+updates; memory-heavy for large corpora on constrained hardware.
+────────────────────────────────────────────────────────────────────────────────
+BM25
+────────────────────────────────────────────────────────────────────────────────
+Definition    : A sparse, term-frequency-based ranking function (an
+improvement on TF-IDF) that scores document relevance to a
+query based on term overlap and frequency saturation.
+Uses          : Keyword/lexical retrieval leg of hybrid RAG systems.
+Advantages    : No training or embeddings needed; excellent for exact
+keyword/entity matches embeddings can miss (IDs, jargon).
+Disadvantages : No semantic understanding — misses paraphrases and synonyms;
+sensitive to document length normalization parameters.
+────────────────────────────────────────────────────────────────────────────────
+LOW-RANK ADAPTATION (LoRA)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Fine-tuning method that freezes pretrained weights and injects
+small trainable low-rank matrices (A·B) into layers, instead
+of updating all parameters.
+Uses          : Efficient fine-tuning of LLMs/VLMs on consumer GPUs.
+Advantages    : Drastically fewer trainable parameters and less VRAM/storage;
+multiple LoRA adapters can be swapped on one base model.
+Disadvantages : Slightly lower ceiling than full fine-tuning on some tasks;
+rank and target-module choice needs tuning.
+────────────────────────────────────────────────────────────────────────────────
+QLoRA
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Combines LoRA with a quantized (typically 4-bit NF4) frozen
+base model, using techniques like double quantization and
+paged optimizers to fine-tune large models on limited VRAM.
+Uses          : Fine-tuning multi-billion parameter models (e.g. Qwen2.5-VL-3B)
+on a single 4–16GB consumer GPU.
+Advantages    : Makes fine-tuning feasible on hardware like an RTX 2050;
+near full-fine-tuning quality in many benchmarks.
+Disadvantages : Quantization + backward pass adds complexity and potential
+numerical instability; slower per-step than plain LoRA due
+to dequantization overhead; gradient checkpointing often
+still required to fit memory.
+────────────────────────────────────────────────────────────────────────────────
+QUANTIZATION
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Reducing numerical precision of model weights/activations
+(e.g. FP32 → INT8/INT4) to shrink memory and speed up inference.
+Uses          : Running large models on constrained VRAM; GGUF/GGML for
+llama.cpp, Ollama; bitsandbytes NF4 for QLoRA.
+Advantages    : Large memory/speed savings, often with minimal accuracy loss
+at 8-bit and acceptable loss at 4-bit.
+Disadvantages : Aggressive quantization can degrade accuracy, especially on
+reasoning-heavy tasks; some hardware/kernels don't support
+all quantization schemes efficiently.
+────────────────────────────────────────────────────────────────────────────────
+PARAMETER-EFFICIENT FINE-TUNING (PEFT)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Umbrella term for fine-tuning methods that update only a
+small subset/addition of parameters instead of the full model.
+Uses          : LoRA, QLoRA, prefix-tuning, adapters, prompt-tuning.
+Advantages    : Much lower compute/storage cost; less catastrophic forgetting
+than full fine-tuning; easy to maintain many task variants.
+Disadvantages : Can underperform full fine-tuning on tasks requiring large
+representational shifts from the base model.
+────────────────────────────────────────────────────────────────────────────────
+VISION-LANGUAGE MODEL (VLM)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : A model that jointly processes images (and sometimes video)
+and text, typically via a vision encoder feeding into an LLM
+backbone through a projection/adapter layer.
+Uses          : Image captioning, visual QA, document/chart understanding
+(Qwen2.5-VL), video frame reasoning.
+Advantages    : Unifies vision and language reasoning in one model; strong
+zero-shot performance on captioning/grounding tasks.
+Disadvantages : Heavy VRAM footprint; vision encoder + LLM coupling makes
+fine-tuning trickier; struggles with fine-grained spatial
+precision and long video context.
+────────────────────────────────────────────────────────────────────────────────
+RLHF (Reinforcement Learning from Human Feedback)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Aligns a pretrained LLM to human preferences by training a
+reward model on human-ranked outputs, then optimizing the
+LLM against it (typically via PPO).
+Uses          : Instruction-following/chat model alignment (ChatGPT, Claude,
+Llama-Instruct series).
+Advantages    : Produces more helpful, safe, instruction-following behavior
+than raw pretraining.
+Disadvantages : Complex, unstable training pipeline; reward hacking; reward
+model itself can encode biases; expensive human labeling.
+────────────────────────────────────────────────────────────────────────────────
+DIRECT PREFERENCE OPTIMIZATION (DPO)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : An alignment method that directly optimizes a model on
+preference pairs (chosen vs rejected response) using a
+closed-form loss, skipping the separate reward model + RL loop.
+Uses          : Simpler alternative to RLHF for instruction/preference tuning.
+Advantages    : Simpler, more stable, cheaper than full RLHF/PPO; comparable
+alignment quality in many settings.
+Disadvantages : Sensitive to quality of preference-pair data; less flexible
+than reward-model-based RL for complex, multi-objective
+reward shaping.
+────────────────────────────────────────────────────────────────────────────────
+PROMPT ENGINEERING
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Designing input prompts (instructions, examples, structure)
+to steer an LLM's output without changing model weights.
+Uses          : Zero-shot/few-shot prompting, system prompts, agent tool-use
+instructions, chain-of-thought prompting.
+Advantages    : No training cost; fast iteration; works across any model API.
+Disadvantages : Brittle — small wording changes shift output; few-shot
+examples can cause verbatim-copying/anchoring bias (as seen
+with your Playwright ref-copying issue); doesn't scale well
+for complex, hard behavioral constraints vs fine-tuning.
+────────────────────────────────────────────────────────────────────────────────
+CHAIN-OF-THOUGHT (CoT) PROMPTING
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Prompting a model to generate intermediate reasoning steps
+before the final answer, improving multi-step reasoning.
+Uses          : Math word problems, multi-hop QA, planning/agent tasks.
+Advantages    : Significantly improves reasoning accuracy on complex tasks;
+works zero-shot with a simple "think step by step" cue.
+Disadvantages : Increases token usage/latency/cost; reasoning traces can
+look plausible but be logically wrong (unfaithful CoT).
+────────────────────────────────────────────────────────────────────────────────
+AGENTIC WORKFLOW / LLM AGENT
+────────────────────────────────────────────────────────────────────────────────
+Definition    : A system where an LLM plans, calls tools/APIs, observes
+results, and iterates toward a goal, rather than producing a
+single one-shot response.
+Uses          : Browser automation (Playwright MCP agents), multi-agent
+research pipelines (Planner/Searcher/Critic), file management
+agents.
+Advantages    : Handles multi-step, tool-dependent tasks beyond pure text
+generation; composable via sub-agents.
+Disadvantages : Error compounding across steps; smaller models (e.g. 8B)
+struggle with free-form tool-call generation — often more
+reliable with a hardcoded step executor and narrow LLM
+decision points, as you found; stale state (e.g. accessibility
+tree refs) causes brittle failures.
+────────────────────────────────────────────────────────────────────────────────
+MODEL CONTEXT PROTOCOL (MCP)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : An open protocol standardizing how LLM applications connect
+to external tools/data sources (servers exposing tools,
+resources, prompts) over a common interface (stdio, HTTP/SSE).
+Uses          : Connecting agents to browsers (Playwright MCP), file systems,
+SaaS tools (Drive, Slack, Asana) without bespoke integrations.
+Advantages    : Decouples tool implementation from the LLM client; reusable
+across different agent frameworks/models.
+Disadvantages : Session/connection management adds operational complexity
+(e.g. SSE session expiry needing keepalive pings); still an
+evolving spec with inconsistent server implementations.
+────────────────────────────────────────────────────────────────────────────────
+KNOWLEDGE DISTILLATION
+────────────────────────────────────────────────────────────────────────────────
+Definition    : Training a smaller "student" model to mimic the outputs
+(soft labels/logits) of a larger "teacher" model.
+Uses          : Compressing LLMs for edge/consumer-GPU deployment; distilled
+model families (e.g. small Qwen/Llama variants).
+Advantages    : Retains much of the teacher's performance at a fraction of
+the size/compute; faster inference.
+Disadvantages : Student ceiling bounded by teacher quality; distillation
+data/process design is nontrivial; can inherit teacher biases.
+────────────────────────────────────────────────────────────────────────────────
+MIXTURE OF EXPERTS (MoE)
+────────────────────────────────────────────────────────────────────────────────
+Definition    : An architecture where a gating network routes each input to
+a small subset of specialized "expert" sub-networks instead
+of activating the full model.
+Uses          : Large-scale LLMs (Mixtral, DeepSeek-MoE) needing high
+capacity without proportional inference cost.
+Advantages    : Much higher parameter count for the same active-compute
+cost; experts can specialize.
+Disadvantages : Complex routing/load-balancing during training; higher total
+memory footprint even though only some experts activate;
+harder to fine-tune and deploy on constrained hardware.
+────────────────────────────────────────────────────────────────────────────────
+CATASTROPHIC FORGETTING
+────────────────────────────────────────────────────────────────────────────────
+Definition    : A model loses previously learned capabilities when fine-tuned
+on new data/tasks, because updates overwrite prior weights.
+Uses          : A key risk to monitor during fine-tuning/continual learning.
+Advantages    : Understanding it motivates PEFT (LoRA), replay buffers, and
+lower learning rates during fine-tuning.
+Disadvantages : Degrades general capability for task specialization; hard to
+fully prevent without retaining/mixing original training data.
