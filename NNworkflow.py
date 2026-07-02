@@ -333,7 +333,6 @@ test_ds  = test_ds.prefetch(AUTOTUNE)
 
 print(f"\nDataset element spec: {train_ds.element_spec}")
 
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # PHASE 4 ── MODEL ARCHITECTURE DESIGN
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
