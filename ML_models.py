@@ -114,7 +114,6 @@ sgd_classifier = SGDClassifier(
     average=False,                 # compute averaged SGD weights
 )
 
-
 # ==============================================================================
 # PART 2: SCIKIT-LEARN — TREE-BASED MODELS
 # ==============================================================================
