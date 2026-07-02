@@ -362,7 +362,7 @@ RULES:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4a. SEQUENTIAL API
-# ─────────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────────────────────
 """
 PURPOSE   : Build a linear stack of layers with one line per layer.
 IMPORTANCE: Simplest API; great for prototyping and teaching.
