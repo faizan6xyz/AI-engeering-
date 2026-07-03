@@ -1,24 +1,5 @@
-"""
-=============================================================
-  ADVANCED RNN (Recurrent Neural Network) - From Scratch
-=============================================================
-  USE       : Time-series forecasting, text generation, sequence
-              classification, language modeling, speech recognition
-  WORKING   : At each timestep t, hidden state h_t = tanh(W_hh * h_{t-1} + W_xh * x_t + b_h)
-              Output y_t = W_hy * h_t + b_y
-              Backpropagation Through Time (BPTT) computes gradients across timesteps
-  REQUIRES  : numpy (pip install numpy)
-              matplotlib (pip install matplotlib) [optional, for plotting]
-=============================================================
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
-
-
-# ─────────────────────────────────────────────
-# ACTIVATIONS
-# ─────────────────────────────────────────────
 
 def tanh(x):
     return np.tanh(x)                      # hidden activation
@@ -61,18 +42,9 @@ class RNNCell:
 # ─────────────────────────────────────────────
 
 class RNN:
-    """
-    USE     : Sequence-to-sequence tasks (many-to-many / many-to-one)
-    WORKING : Unrolls RNNCell over T timesteps; BPTT propagates loss
-              backward through all T steps accumulating gradients.
-    """
-
     def __init__(self, input_size, hidden_size, output_size,
                  lr=0.01, clip=5.0, task='regression'):
-        """
-        task : 'regression'     -> MSE loss + linear output
-               'classification' -> cross-entropy + softmax output
-        """
+
         self.cell        = RNNCell(input_size, hidden_size, output_size)
         self.hidden_size = hidden_size
         self.lr          = lr
@@ -113,10 +85,6 @@ class RNN:
     # ── BPTT  (Backprop Through Time) ────────
 
     def backward(self, inputs, ys, hs, zs, targets):
-        """
-        WORKING : Computes dL/dW by chaining gradients from t=T..0
-                  dh propagates back through time; clipped to avoid explosion
-        """
         c = self.cell
         dW_xh = np.zeros_like(c.W_xh)
         dW_hh = np.zeros_like(c.W_hh)
@@ -223,24 +191,13 @@ def make_sine_sequences(n_seq=200, seq_len=20, noise=0.05):
         Y.append(s[1:])           # target t=1..T   (next-step prediction)
     return np.array(X), np.array(Y)
 
-
 def seq_to_rnn_inputs(x_seq, y_seq):
     """Convert 1-D sequences → list of column vectors."""
     xs = [x.reshape(1, 1) for x in x_seq]
     ys = [y.reshape(1, 1) for y in y_seq]
     return xs, ys
 
-
-# ─────────────────────────────────────────────
-# TRAINING LOOP
-# ─────────────────────────────────────────────
-
 def train(model, X, Y, epochs=30, verbose=True):
-    """
-    USE     : call this with any RNN / AdamRNN instance
-    WORKING : iterates dataset, resets hidden state per sequence,
-              runs train_step, prints epoch loss
-    """
     n = len(X)
     for epoch in range(1, epochs + 1):
         total_loss = 0

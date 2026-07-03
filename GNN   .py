@@ -1,21 +1,3 @@
-"""
-Advanced Graph Neural Network (GNN) — Full Pipeline
-=====================================================
-Covers:
-  1. Graph construction & dataset (PyG Data objects)
-  2. Multiple GNN architectures (GCN, GAT, GraphSAGE, GIN)
-  3. Message passing with custom aggregation
-  4. Residual connections + normalization
-  5. Graph-level, node-level, link-level prediction heads
-  6. Mini-batch NeighborSampler for scalable training
-  7. Training loop with LR scheduler + early stopping
-  8. Evaluation (accuracy, AUC, F1)
-  9. ONNX export for deployment
-
-Requirements:
-    pip install torch torch_geometric ogb scikit-learn
-"""
-
 import os
 import time
 import torch
@@ -33,10 +15,8 @@ from torch_geometric.nn import (
 )
 from torch_geometric.utils import add_self_loops, degree, negative_sampling
 from torch_geometric.loader import NeighborLoader
-
 from sklearn.metrics import roc_auc_score, f1_score
 import numpy as np
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1. CONFIGURATION

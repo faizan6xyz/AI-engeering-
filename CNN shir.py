@@ -1,34 +1,3 @@
-"""
-=============================================================
-CONVOLUTIONAL NEURAL NETWORK (CNN) - Complete Implementation
-=============================================================
-
-WHAT IS CNN?
-  A CNN is a deep learning model designed for grid-like data (images, time-series).
-  It uses filters/kernels to detect spatial patterns (edges, shapes, textures).
-
-WORKFLOW:
-  Input Image → Conv Layer → ReLU → Pooling → Conv Layer → ReLU → Pooling
-  → Flatten → Fully Connected → Softmax → Output (Class Probabilities)
-
-USE:
-  - Image Classification (cats vs dogs, digit recognition)
-  - Object Detection, Face Recognition, Medical Imaging
-
-REQUIREMENTS:
-  pip install torch torchvision numpy matplotlib
-  Python >= 3.8
-
-STRUCTURE:
-  1. Imports & Config
-  2. Data Loading & Preprocessing
-  3. CNN Model Definition
-  4. Training Loop
-  5. Evaluation
-  6. Prediction on New Image
-=============================================================
-"""
-
 # ── 1. IMPORTS & CONFIG ──────────────────────────────────────
 import torch                          # Core deep learning framework
 import torch.nn as nn                 # Neural network layers
@@ -38,26 +7,13 @@ import torchvision.transforms as T    # Image augmentation/normalization
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-
-# Device: use GPU if available, else CPU
 DEVICE     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 BATCH_SIZE = 64      # Samples per gradient update
 EPOCHS     = 10      # Full passes over dataset
 LR         = 0.001   # Learning rate
 NUM_CLASSES= 10      # CIFAR-10 has 10 classes
-
 print(f"Using device: {DEVICE}")
-
-
 # ── 2. DATA LOADING & PREPROCESSING ─────────────────────────
-"""
-WHAT: CIFAR-10 dataset — 60k color images (32x32), 10 classes
-WHY transforms:
-  - ToTensor()        : converts PIL image to [0,1] float tensor
-  - Normalize()       : zero-mean, unit-variance per channel → stable training
-  - RandomHorizontalFlip: data augmentation → reduces overfitting
-"""
-
 train_transform = T.Compose([
     T.RandomHorizontalFlip(),          # Augmentation: flip 50% of images
     T.RandomCrop(32, padding=4),       # Augmentation: random crop
@@ -65,19 +21,16 @@ train_transform = T.Compose([
     T.Normalize((0.4914, 0.4822, 0.4465),   # CIFAR-10 channel means
                 (0.2023, 0.1994, 0.2010))   # CIFAR-10 channel stds
 ])
-
 test_transform = T.Compose([
     T.ToTensor(),
     T.Normalize((0.4914, 0.4822, 0.4465),
                 (0.2023, 0.1994, 0.2010))
 ])
-
 # Download dataset (first run downloads ~170MB)
 train_set = torchvision.datasets.CIFAR10(root='./data', train=True,
                                           download=True, transform=train_transform)
 test_set  = torchvision.datasets.CIFAR10(root='./data', train=False,
                                           download=True, transform=test_transform)
-
 # DataLoader: batches data, shuffles, uses multiple workers
 train_loader = DataLoader(train_set, batch_size=BATCH_SIZE, shuffle=True,  num_workers=2)
 test_loader  = DataLoader(test_set,  batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
@@ -92,7 +45,7 @@ ARCHITECTURE:
   Block 1: Conv(3→32) → BN → ReLU → Conv(32→32) → BN → ReLU → MaxPool → Dropout
   Block 2: Conv(32→64) → BN → ReLU → Conv(64→64) → BN → ReLU → MaxPool → Dropout
   Head   : Flatten → FC(1024→512) → ReLU → Dropout → FC(512→10)
-
+  
 KEY CONCEPTS:
   Conv2d   : learnable filters slide over input to produce feature maps
   BatchNorm: normalizes layer output → faster convergence
@@ -174,22 +127,17 @@ scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 # ── 5. TRAINING & EVALUATION FUNCTIONS ──────────────────────
 
 def train_one_epoch(model, loader, optimizer, criterion):
-    """Single epoch: forward pass → loss → backprop → weight update"""
     model.train()           # Enable dropout & batchnorm in training mode
     total_loss, correct = 0, 0
-
     for images, labels in loader:
         images, labels = images.to(DEVICE), labels.to(DEVICE)
-
         optimizer.zero_grad()           # Clear previous gradients
         outputs = model(images)         # Forward pass → logits
         loss = criterion(outputs, labels)  # Compute loss
         loss.backward()                 # Backprop: compute gradients
         optimizer.step()                # Update weights
-
         total_loss += loss.item()
         correct    += (outputs.argmax(1) == labels).sum().item()
-
     avg_loss = total_loss / len(loader)
     accuracy = 100 * correct / len(loader.dataset)
     return avg_loss, accuracy
@@ -300,7 +248,6 @@ def per_class_accuracy(model, loader):
     model.eval()
     correct = torch.zeros(NUM_CLASSES)
     total   = torch.zeros(NUM_CLASSES)
-
     with torch.no_grad():
         for images, labels in loader:
             preds = model(images.to(DEVICE)).argmax(1).cpu()
@@ -308,26 +255,9 @@ def per_class_accuracy(model, loader):
                 mask         = (labels == c)
                 total[c]   += mask.sum()
                 correct[c] += (preds[mask] == labels[mask]).sum()
-
     print("\nPer-Class Accuracy:")
     for i, cls in enumerate(CLASSES):
         acc = 100 * correct[i] / total[i]
         print(f"  {cls:<12}: {acc:.1f}%")
 
 per_class_accuracy(model, test_loader)
-
-"""
-=============================================================
-SUMMARY
-=============================================================
-CNN Flow:
-  1. Conv  → detect low-level features (edges, corners)
-  2. ReLU  → introduce non-linearity
-  3. Pool  → reduce spatial size, increase receptive field
-  4. Repeat→ detect high-level features (shapes, objects)
-  5. FC    → classify based on extracted features
-
-Expected accuracy on CIFAR-10 after 10 epochs: ~75-80%
-For higher accuracy: add more blocks, use ResNet, train longer.
-=============================================================
-"""
